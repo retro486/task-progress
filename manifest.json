@@ -1,0 +1,15 @@
+{
+    "name": "retro486-task-progress.retro486",
+    "description": "A simple task tracking app to allow easly progression.",
+    "architecture": "@CLICK_ARCH@",
+    "title": "Task Progress",
+    "hooks": {
+        "retro486-task-progress": {
+            "apparmor": "retro486-task-progress.apparmor",
+            "desktop":  "retro486-task-progress.desktop"
+        }
+    },
+    "version": "0.0.1",
+    "maintainer": "Russ Bernhardt <retro486@outlook.com>",
+    "framework" : "ubuntu-sdk-16.04"
+}

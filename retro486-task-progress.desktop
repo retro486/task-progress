@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Task Progress
+Exec=retro486-task-progress %U
+Icon=assets/logo.svg
+Terminal=false
+Type=Application
+X-Ubuntu-Touch=true
