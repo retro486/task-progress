@@ -6,4 +6,4 @@ A simple task tracking app to allow easly progression.
 
 Copyright (C) 2020  Russ Bernhardt
 
-Licensed under the MIT license
+Licensed under the GPLv3 license
