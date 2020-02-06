@@ -4,7 +4,7 @@ import Ubuntu.Components 1.3
 import QtQuick.Layouts 1.3
 import Qt.labs.settings 1.0
 
-import Greeter 1.0
+import Tasks 1.0
 
 ApplicationWindow {
     id: root
@@ -14,9 +14,29 @@ ApplicationWindow {
     height: units.gu(75)
     visible: true
 
-    Greeter {
-        id: greeter
-        name: "Rust + Ubuntu Touch"
+    Tasks {
+        id: tasks
+        onCountChanged: {
+            label.text = tasks.i_count;
+        }
+    }
+
+    Component {
+        id: taskDelegate
+        RowLayout {
+            width: parent.width
+            CheckBox {
+
+            }
+            Item {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Label {
+                    text: model.name
+                }
+            }
+            // TODO progress bar mapped to progress and steps properties
+        }
     }
 
     Page {
@@ -41,15 +61,27 @@ ApplicationWindow {
                 Layout.fillHeight: true
             }
 
+            ListView {
+                anchors.fill: parent
+                model: tasks
+                delegate: taskDelegate
+
+                Component.onCompleted: {
+                    // for (var prop in tasks) {
+                    //     print(prop += " (" + typeof(tasks[prop]) + ") = " + tasks[prop]);
+                    // }
+                }
+            }
+
             Label {
                 id: label
                 text: i18n.tr('Press the button below!')
             }
 
             Button {
-                text: i18n.tr('Compute greeting')
+                text: i18n.tr('Add new task')
                 onClicked: {
-                    label.text = greeter.compute_greetings("Hello, ");
+                    tasks.add_dummy()
                 }
             }
 

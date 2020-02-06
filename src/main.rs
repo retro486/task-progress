@@ -6,20 +6,10 @@ extern crate cpp;
 extern crate qmetaobject;
 
 use qmetaobject::*;
-use std::collections::HashMap;
 
 mod qrc;
 
-#[derive(QObject,Default)]
-struct Greeter {
-    base : qt_base_class!(trait QObject),
-    name : qt_property!(QString; NOTIFY name_changed),
-    name_changed : qt_signal!(),
-    compute_greetings : qt_method!(fn compute_greetings(&self, verb : String) -> QString {
-        return (verb + " " + &self.name.to_string()).into()
-    })
-}
-
+#[derive(QGadget,Clone,Default,Debug)]
 struct Task {
     name: String,
     progress: u32,
@@ -27,71 +17,96 @@ struct Task {
 }
 
 impl Task {
-    fn print(&self) {
-        println!("{}: {} of {} steps complete", self.name, self.progress, self.steps);
-    }
-
-    fn incr(&mut self) {
+    pub fn incr(&mut self) {
         if self.progress < self.steps {
             self.progress += 1;
         }
     }
 
-    fn decr(&mut self) {
+    pub fn decr(&mut self) {
         if self.progress > 0 {
             self.progress -= 1;
         }
     }
+
+    // TODO pub fn rename(&mut self, new_name: String) { ... }
 }
 
+#[allow(non_snake_case)]
+#[derive(QObject,Default)]
 struct Tasks {
-    tasks: HashMap<String, Task>,
+    base: qt_base_class!(trait QAbstractListModel),
+    data: Vec<Task>,
+    i_count: qt_property!(usize; NOTIFY countChanged),
+    countChanged: qt_signal!(),
+    
+    incr: qt_method!(fn incr(&mut self, index: usize) {
+        if let Some(t) = self.data.get_mut(index) {
+            t.incr();
+        }
+    }),
+
+    decr: qt_method!(fn decr(&mut self, index: usize) {
+        if let Some(t) = self.data.get_mut(index) {
+            t.decr();
+        }
+    }),
+
+    count: qt_method!(fn count(&self) -> usize {
+        return self.i_count;
+    }),
+
+    remove: qt_method!(fn remove(&mut self, index: usize) {
+        // Wrapped with a function so it can be called directly by QML
+        if index < self.data.len() {
+            self.data.remove(index);
+        }
+    }),
+
+    add_dummy: qt_method!(fn add_dummy(&mut self) {
+        let name = format!("Test {}", self.i_count);
+        let count = self.i_count;
+        (self as &mut dyn QAbstractListModel).begin_insert_rows(count as i32, count as i32);
+        self.add(String::from(&name), 0, 10);
+        (self as &mut dyn QAbstractListModel).end_insert_rows();
+    }),
+}
+
+// But we still need to implement the QAbstractListModel manually
+impl QAbstractListModel for Tasks {
+    fn row_count(&self) -> i32 {
+        println!("{:?}", self.data.len());
+        return self.data.len() as i32;
+    }
+    
+    fn data(&self, index: QModelIndex, role:i32) -> QVariant {
+        if role != USER_ROLE { return QVariant::default(); }
+        // We use the QGadget::to_qvariant function
+        let m_task = self.data.get(index.row() as usize);
+        let item = self.data.get(index.row() as usize).map(|x|x.to_qvariant()).unwrap_or_default();
+        //println!("Here's item: {:#?}", m_task);
+        return item;
+    }
+    
+    fn role_names(&self) -> std::collections::HashMap<i32, QByteArray> {
+        return vec![(USER_ROLE, QByteArray::from("name"))].into_iter().collect();
+    }
 }
 
 impl Tasks {
     fn add(&mut self, name: String, progress: u32, steps: u32) {
-        let task_name = String::from(&name);
         let task = Task {
-            name: name,
+            name: String::from(&name),
             progress: progress,
             steps: steps,
         };
 
-        self.tasks.insert(task_name, task);
-    }
-
-    fn remove(&mut self, name: String) {
-        // Wrapped with a function so it can be called directly by QML
-        if let Some(_t) = self.tasks.remove(&name) {
-            // removed successful
-        }
-    }
-
-    fn incr(&mut self, name: String) {
-        if let Some(t) = self.tasks.get_mut(&name) {
-            t.incr();
-        }
-    }
-
-    fn decr(&mut self, name: String) {
-        if let Some(t) = self.tasks.get_mut(&name) {
-            t.decr();
-        }
-    }
-
-    fn print(&self) {
-        println!("");
-        for (_key, m_task) in &self.tasks {
-            m_task.print();
-        }
+        self.data.push(task);
+        self.i_count = self.data.len();
     }
 }
 
 fn main() {
-    let mut tasks = Tasks {
-        tasks: HashMap::new(),
-    };
-    
     unsafe {
         cpp! { {
             #include <QtCore/QCoreApplication>
@@ -103,8 +118,8 @@ fn main() {
     }
     QQuickStyle::set_style("Suru");
     qrc::load();
-    qml_register_type::<Greeter>(cstr!("Greeter"), 1, 0, cstr!("Greeter"));
     let mut engine = QmlEngine::new();
+    qml_register_type::<Tasks>(cstr!("Tasks"), 1, 0, cstr!("Tasks"));
     engine.load_file("qrc:/qml/Main.qml".into());
     engine.exec();
 }
